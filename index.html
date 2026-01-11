@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bingo Adrián (v2.0)</title>
+    <title>Bingo Adrián (v2.1 Magic)</title>
     <!-- React y Dependencias -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -22,7 +22,7 @@
 
     <div id="loading-screen">
         <div class="spinner mb-4"></div>
-        <h2 class="text-xl text-slate-700">Cargando Bingo Adrián v2.0...</h2>
+        <h2 class="text-xl text-slate-700">Cargando Bingo Adrián v2.1...</h2>
     </div>
     <div id="root"></div>
 
@@ -30,7 +30,7 @@
         const { useState, useEffect, useRef } = React;
         
         // --- CONFIGURACIÓN DE VERSIÓN ---
-        const APP_VERSION = "v2.0"; 
+        const APP_VERSION = "v2.1"; 
 
         // --- ICONOS ---
         const Icon = ({ p, size=24, cls="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cls}>{p}</svg>;
@@ -47,6 +47,8 @@
         const CheckCircle = (p) => <Icon p={<g><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></g>} {...p}/>;
         const X = (p) => <Icon p={<g><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></g>} {...p}/>;
         const Smartphone = (p) => <Icon p={<g><rect x="5" y="2" width="14" height="20" rx="2" ry="2" /><line x1="12" y1="18" x2="12.01" y2="18" /></g>} {...p}/>;
+        const FileText = (p) => <Icon p={<g><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></g>} {...p}/>;
+        const Wand2 = (p) => <Icon p={<g><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><circle cx="11" cy="11" r="8" opacity="0"/></g>} {...p}/>;
 
         // Lógica de Cartones
         const mulberry32 = (a) => () => { let t = a += 0x6D2B79F5; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -101,10 +103,15 @@
             const [printCount, setPrintCount] = useState(4);
             const [generatedCards, setGeneratedCards] = useState([]);
             
+            // --- ESTADOS MAGIC ---
+            const [showMagic, setShowMagic] = useState(false);
+            const [magicCode, setMagicCode] = useState("");
+            const [isMagicAuthenticated, setIsMagicAuthenticated] = useState(false);
+            const [magicSerial, setMagicSerial] = useState(""); // El serial objetivo
+            const [magicEnabled, setMagicEnabled] = useState(false);
+
             const autoPlayRef = useRef(null);
             const audioRef = useRef(null);
-            
-            // Nueva URL de música más fiable (Música animada de fondo)
             const MUSIC_URL = "https://commondatastorage.googleapis.com/codeskulptor-assets/Epoq-Lepidoptera.ogg";
 
             useEffect(() => { document.getElementById('loading-screen').style.display = 'none'; }, []);
@@ -115,33 +122,62 @@
                 return () => clearInterval(autoPlayRef.current);
             }, [isAutoPlaying, drawnNumbers, gameSpeed, gameOver]);
 
-            // Función dedicada para activar/desactivar música con interacción directa
+            useEffect(() => {
+                if (audioRef.current) {
+                    audioRef.current.volume = 0.5;
+                    if (musicEnabled) audioRef.current.play().catch(e => console.log("Click para audio"));
+                    else audioRef.current.pause();
+                }
+            }, [musicEnabled]);
+
             const toggleMusic = () => {
                 const newState = !musicEnabled;
                 setMusicEnabled(newState);
-                
-                // Forzar reproducción/pausa inmediatamente al hacer clic
                 if (audioRef.current) {
                     if (newState) {
-                        audioRef.current.volume = 0.5; // Volumen al 50%
-                        const playPromise = audioRef.current.play();
-                        if (playPromise !== undefined) {
-                            playPromise.catch(error => {
-                                console.error("Error al reproducir audio:", error);
-                                // Si falla, intentamos de nuevo o avisamos (silenciosamente)
-                            });
-                        }
-                    } else {
-                        audioRef.current.pause();
-                    }
+                        audioRef.current.volume = 0.5;
+                        audioRef.current.play().catch(e=>{});
+                    } else { audioRef.current.pause(); }
                 }
             };
 
+            // --- LÓGICA DE SORTEO MODIFICADA (MAGIC) ---
             const drawBall = () => {
-                if (drawnNumbers.length >= TOTAL_NUMBERS) { setGameOver(true); setIsAutoPlaying(false); speak("Fin del juego"); return;
+                if (drawnNumbers.length >= TOTAL_NUMBERS) { setGameOver(true); setIsAutoPlaying(false); speak("Fin del juego"); return; }
+                
+                let n;
+                let usedMagic = false;
+
+                // 1. Verificamos si Magic está activo y hay un serial definido
+                if (magicEnabled && magicSerial) {
+                    const s = parseInt(magicSerial);
+                    if (s) {
+                        // Generamos el cartón mágico para ver qué números necesita
+                        const magicGrid = generateCardData(s);
+                        // Aplanamos el array y quitamos los ceros y los que ya salieron
+                        const neededNumbers = magicGrid.flat().filter(num => num !== 0 && !drawnNumbers.includes(num));
+                        
+                        // 2. Probabilidad "Mágica" (50% de probabilidad de forzar un número útil si quedan)
+                        if (neededNumbers.length > 0 && Math.random() < 0.5) {
+                            // Elegimos uno al azar de los que necesita
+                            const randomIndex = Math.floor(Math.random() * neededNumbers.length);
+                            n = neededNumbers[randomIndex];
+                            usedMagic = true;
+                            // console.log("¡Magia aplicada! Forzando número: " + n);
+                        }
+                    }
                 }
-                let n; do { n = Math.floor(Math.random() * TOTAL_NUMBERS) + 1; } while (drawnNumbers.includes(n));
-                setDrawnNumbers(p => [...p, n]); setCurrentNumber(n); speak(n);
+
+                // 3. Si no se usó magia (o falló la probabilidad), sorteo normal
+                if (!usedMagic) {
+                    do { 
+                        n = Math.floor(Math.random() * TOTAL_NUMBERS) + 1; 
+                    } while (drawnNumbers.includes(n));
+                }
+
+                setDrawnNumbers(p => [...p, n]); 
+                setCurrentNumber(n); 
+                speak(n);
             };
 
             const resetGame = () => { setIsAutoPlaying(false); setDrawnNumbers([]); setCurrentNumber(null); setGameOver(false); setCheckResult(null); speak("Reinicio"); };
@@ -189,9 +225,16 @@
                 return "bg-pink-500 border-pink-600 text-white";
             };
 
+            const handleMagicLogin = () => {
+                if (magicCode === "ADRIAN") {
+                    setIsMagicAuthenticated(true);
+                } else {
+                    alert("Código incorrecto");
+                }
+            };
+
             return (
                 <div className="min-h-screen p-4 font-sans relative">
-                    {/* Audio oculto */}
                     <audio ref={audioRef} src={MUSIC_URL} loop />
 
                     <div className="max-w-7xl mx-auto">
@@ -221,7 +264,16 @@
                                         <button onClick={drawBall} disabled={isAutoPlaying} className="flex items-center justify-center gap-2 py-3 rounded-xl font-bold bg-green-500 text-white shadow transition active:scale-95 disabled:opacity-50"><ChevronRight/> Sacar</button>
                                     </div>
                                     <button onClick={resetGame} className="w-full flex items-center justify-center gap-2 py-2 rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200"><RotateCcw size={18}/> Reiniciar</button>
-                                    <button onClick={()=>setShowTools(true)} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold bg-indigo-600 text-white shadow hover:bg-indigo-700"><Settings size={18}/> Cartones</button>
+                                    
+                                    {/* BOTONERA INFERIOR CON MAGIC SETTINGS */}
+                                    <div className="flex gap-2">
+                                        <button onClick={()=>setShowTools(true)} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold bg-indigo-600 text-white shadow hover:bg-indigo-700">
+                                            <FileText size={18}/> Cartones
+                                        </button>
+                                        <button onClick={()=>setShowMagic(true)} className="w-14 flex items-center justify-center rounded-xl font-bold bg-slate-200 text-slate-600 shadow hover:bg-slate-300">
+                                            <Settings size={20}/>
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="mt-6 w-full pt-4 border-t border-slate-100">
@@ -234,17 +286,8 @@
                                         </button>
                                     </div>
                                     
-                                    {/* Slider de Velocidad INVERTIDO */}
                                     <div className="mt-4">
-                                        <input 
-                                            type="range" 
-                                            min="1000" 
-                                            max="15000" 
-                                            step="1000" 
-                                            value={16000 - gameSpeed} 
-                                            onChange={e=>setGameSpeed(16000 - Number(e.target.value))} 
-                                            className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-blue-600" 
-                                        />
+                                        <input type="range" min="1000" max="15000" step="1000" value={16000 - gameSpeed} onChange={e=>setGameSpeed(16000 - Number(e.target.value))} className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-blue-600" />
                                         <div className="flex justify-between text-xs text-slate-400 mt-1 font-medium">
                                             <span>Lento (15s)</span>
                                             <span>Velocidad Auto</span>
@@ -253,7 +296,6 @@
                                     </div>
 
                                     <div className="flex justify-end mt-2">
-                                        {/* INDICADOR DE VERSIÓN */}
                                         <span className="text-[10px] font-mono text-slate-300 select-none cursor-default" title="Versión de la App">{APP_VERSION}</span>
                                     </div>
                                 </div>
@@ -270,9 +312,10 @@
                             </div>
                         </div>
 
+                        {/* Modal Cartones */}
                         {showTools && <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                             <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-                                <div className="p-4 border-b flex justify-between items-center"><h2 className="font-bold text-lg flex gap-2"><Settings className="text-indigo-600"/> Gestión</h2><button onClick={()=>setShowTools(false)}><X/></button></div>
+                                <div className="p-4 border-b flex justify-between items-center"><h2 className="font-bold text-lg flex gap-2"><FileText className="text-indigo-600"/> Gestión de Cartones</h2><button onClick={()=>setShowTools(false)}><X/></button></div>
                                 <div className="flex border-b"><button onClick={()=>setToolTab('check')} className={`flex-1 py-3 font-bold ${toolTab==='check'?'text-indigo-600 bg-indigo-50 border-b-2 border-indigo-600':''}`}>Verificar</button><button onClick={()=>setToolTab('print')} className={`flex-1 py-3 font-bold ${toolTab==='print'?'text-indigo-600 bg-indigo-50 border-b-2 border-indigo-600':''}`}>Imprimir</button></div>
                                 <div className="p-6 overflow-y-auto">
                                     {toolTab==='check' && <div className="space-y-4">
@@ -290,6 +333,67 @@
                                 </div>
                             </div>
                         </div>}
+
+                        {/* Modal Magic Settings */}
+                        {showMagic && <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+                            <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="font-bold text-lg flex items-center gap-2 text-slate-800"><Settings className="text-slate-500"/> Configuración</h2>
+                                    <button onClick={()=>setShowMagic(false)}><X/></button>
+                                </div>
+
+                                {!isMagicAuthenticated ? (
+                                    <div className="space-y-4">
+                                        <p className="text-sm text-slate-500">Introduce el código de administrador:</p>
+                                        <input 
+                                            type="password" 
+                                            className="w-full border p-3 rounded-lg text-center tracking-widest text-lg" 
+                                            placeholder="••••••"
+                                            value={magicCode}
+                                            onChange={(e) => setMagicCode(e.target.value)}
+                                        />
+                                        <button onClick={handleMagicLogin} className="w-full bg-slate-800 text-white py-3 rounded-lg font-bold">Acceder</button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        <div className="bg-purple-50 border border-purple-100 p-4 rounded-xl">
+                                            <div className="flex items-center gap-2 text-purple-700 font-bold mb-2">
+                                                <Wand2 size={20}/> MAGIC MODE
+                                            </div>
+                                            <p className="text-xs text-purple-600 mb-4">
+                                                Introduce el N.º de Serie del cartón que deseas favorecer. El sistema aumentará la probabilidad de que salgan sus números.
+                                            </p>
+                                            
+                                            <div className="mb-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">Cartón Objetivo</label>
+                                                <input 
+                                                    type="number" 
+                                                    className="w-full border border-slate-300 p-2 rounded-lg mt-1" 
+                                                    placeholder="Ej: 1005"
+                                                    value={magicSerial}
+                                                    onChange={(e) => setMagicSerial(e.target.value)}
+                                                />
+                                            </div>
+
+                                            <div className="flex items-center gap-3 mt-4">
+                                                <span className="text-sm font-bold text-slate-700 flex-1">Activar Probabilidad</span>
+                                                <button 
+                                                    onClick={() => setMagicEnabled(!magicEnabled)}
+                                                    className={`w-12 h-6 rounded-full p-1 transition-colors ${magicEnabled ? 'bg-purple-600' : 'bg-slate-300'}`}
+                                                >
+                                                    <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${magicEnabled ? 'translate-x-6' : ''}`}></div>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="text-center text-xs text-slate-400">
+                                            {magicEnabled && magicSerial ? "🟢 Sistema Activo" : "⚪ Sistema Inactivo"}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>}
+
                     </div>
                 </div>
             );
@@ -300,3 +404,5 @@
     </script>
 </body>
 </html>
+
+
