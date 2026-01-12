@@ -3,38 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bingo Adrián (v2.1 Magic)</title>
+    <title>Bingo Adrián (v3.1 Voz Argentina)</title>
     <!-- React y Dependencias -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @keyframes bounce-short { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-        .animate-bounce-short { animation: bounce-short 0.5s ease-in-out; }
+        /* Animaciones y Efectos Personalizados */
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
+        
+        body { font-family: 'Montserrat', sans-serif; }
+        
+        @keyframes bounce-short { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-15px) scale(1.05); } }
+        .animate-bounce-short { animation: bounce-short 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        
+        /* Bola 3D */
+        .ball-3d {
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.1) 20%, transparent 60%),
+                        radial-gradient(circle at 50% 50%, var(--ball-color) 0%, #000 100%);
+            box-shadow: 0 10px 30px -5px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        /* Efecto Neon */
+        .neon-text { text-shadow: 0 0 10px currentColor; }
+        .neon-box { box-shadow: 0 0 15px var(--glow-color); border-color: var(--glow-color) !important; }
+
         @media print { @page { size: A4; margin: 10mm; } body { background: white; } .no-print { display: none !important; } }
-        #loading-screen { position: fixed; inset: 0; background: #f8fafc; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
-        .spinner { width: 50px; height: 50px; border: 5px solid #cbd5e1; border-top-color: #ef4444; border-radius: 50%; animation: spin 1s linear infinite; }
+        
+        /* Scrollbar bonito */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
+
+        #loading-screen { position: fixed; inset: 0; background: #0f172a; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
+        .spinner { width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.1); border-top-color: #ec4899; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800">
+<body class="bg-[#0f172a] text-white overflow-x-hidden min-h-screen relative selection:bg-pink-500 selection:text-white">
+
+    <!-- Fondo ambiental -->
+    <div class="fixed inset-0 z-0 pointer-events-none">
+        <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/20 rounded-full blur-[120px]"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/20 rounded-full blur-[120px]"></div>
+    </div>
 
     <div id="loading-screen">
-        <div class="spinner mb-4"></div>
-        <h2 class="text-xl text-slate-700">Cargando Bingo Adrián v2.1...</h2>
+        <div class="spinner mb-6"></div>
+        <h2 class="text-2xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">ADRIÁN BINGO</h2>
+        <p class="text-slate-500 text-sm mt-2 font-bold">CARGANDO...</p>
     </div>
-    <div id="root"></div>
+    <div id="root" class="relative z-10"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
         
-        // --- CONFIGURACIÓN DE VERSIÓN ---
-        const APP_VERSION = "v2.1"; 
+        const APP_VERSION = "v3.1"; 
 
         // --- ICONOS ---
         const Icon = ({ p, size=24, cls="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cls}>{p}</svg>;
-        
         const Play = (p) => <Icon p={<polygon points="5 3 19 12 5 21 5 3" />} {...p}/>;
         const Pause = (p) => <Icon p={<g><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></g>} {...p}/>;
         const RotateCcw = (p) => <Icon p={<g><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></g>} {...p}/>;
@@ -49,8 +78,18 @@
         const Smartphone = (p) => <Icon p={<g><rect x="5" y="2" width="14" height="20" rx="2" ry="2" /><line x1="12" y1="18" x2="12.01" y2="18" /></g>} {...p}/>;
         const FileText = (p) => <Icon p={<g><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></g>} {...p}/>;
         const Wand2 = (p) => <Icon p={<g><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><circle cx="11" cy="11" r="8" opacity="0"/></g>} {...p}/>;
+        const Palette = (p) => <Icon p={<g><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></g>} {...p}/>;
 
-        // Lógica de Cartones
+        // --- TEMAS (Actualizados con degradados) ---
+        const THEMES = {
+            blue:   { name: "Azul",   grad: "from-blue-600 to-indigo-600", accent: "text-blue-400", glow: "#3b82f6", border: "border-blue-500/30" },
+            red:    { name: "Rojo",   grad: "from-red-600 to-pink-600",    accent: "text-red-400",  glow: "#ef4444", border: "border-red-500/30" },
+            green:  { name: "Verde",  grad: "from-emerald-500 to-teal-600",accent: "text-emerald-400", glow: "#10b981", border: "border-emerald-500/30" },
+            purple: { name: "Morado", grad: "from-violet-600 to-purple-600",accent: "text-violet-400", glow: "#8b5cf6", border: "border-violet-500/30" },
+            orange: { name: "Naranja",grad: "from-orange-500 to-amber-600",accent: "text-orange-400", glow: "#f97316", border: "border-orange-500/30" },
+            pink:   { name: "Rosa",   grad: "from-pink-500 to-rose-600",   accent: "text-pink-400",   glow: "#ec4899", border: "border-pink-500/30" },
+        };
+
         const mulberry32 = (a) => () => { let t = a += 0x6D2B79F5; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
         const generateCardData = (sn) => {
             const rng = mulberry32(sn);
@@ -102,19 +141,36 @@
             const [printSerialStart, setPrintSerialStart] = useState(1000);
             const [printCount, setPrintCount] = useState(4);
             const [generatedCards, setGeneratedCards] = useState([]);
-            
-            // --- ESTADOS MAGIC ---
+            const [theme, setTheme] = useState("blue");
             const [showMagic, setShowMagic] = useState(false);
             const [magicCode, setMagicCode] = useState("");
             const [isMagicAuthenticated, setIsMagicAuthenticated] = useState(false);
-            const [magicSerial, setMagicSerial] = useState(""); // El serial objetivo
+            const [magicSerial, setMagicSerial] = useState("");
             const [magicEnabled, setMagicEnabled] = useState(false);
+            const [magicClicks, setMagicClicks] = useState(0); 
+            const [voices, setVoices] = useState([]); // Nueva variable para guardar las voces disponibles
 
             const autoPlayRef = useRef(null);
             const audioRef = useRef(null);
             const MUSIC_URL = "https://commondatastorage.googleapis.com/codeskulptor-assets/Epoq-Lepidoptera.ogg";
 
-            useEffect(() => { document.getElementById('loading-screen').style.display = 'none'; }, []);
+            const T = THEMES[theme];
+
+            // Cargar voces cuando estén disponibles
+            useEffect(() => {
+                const loadVoices = () => {
+                    const available = window.speechSynthesis.getVoices();
+                    setVoices(available);
+                };
+                
+                loadVoices();
+                // Algunos navegadores cargan las voces de forma asíncrona
+                if (window.speechSynthesis.onvoiceschanged !== undefined) {
+                    window.speechSynthesis.onvoiceschanged = loadVoices;
+                }
+                
+                document.getElementById('loading-screen').style.display = 'none';
+            }, []);
 
             useEffect(() => {
                 if (isAutoPlaying && !gameOver) autoPlayRef.current = setInterval(drawBall, gameSpeed);
@@ -141,51 +197,66 @@
                 }
             };
 
-            // --- LÓGICA DE SORTEO MODIFICADA (MAGIC) ---
             const drawBall = () => {
                 if (drawnNumbers.length >= TOTAL_NUMBERS) { setGameOver(true); setIsAutoPlaying(false); speak("Fin del juego"); return; }
-                
                 let n;
                 let usedMagic = false;
-
-                // 1. Verificamos si Magic está activo y hay un serial definido
                 if (magicEnabled && magicSerial) {
                     const s = parseInt(magicSerial);
                     if (s) {
-                        // Generamos el cartón mágico para ver qué números necesita
                         const magicGrid = generateCardData(s);
-                        // Aplanamos el array y quitamos los ceros y los que ya salieron
                         const neededNumbers = magicGrid.flat().filter(num => num !== 0 && !drawnNumbers.includes(num));
-                        
-                        // 2. Probabilidad "Mágica" (50% de probabilidad de forzar un número útil si quedan)
                         if (neededNumbers.length > 0 && Math.random() < 0.5) {
-                            // Elegimos uno al azar de los que necesita
                             const randomIndex = Math.floor(Math.random() * neededNumbers.length);
                             n = neededNumbers[randomIndex];
                             usedMagic = true;
-                            // console.log("¡Magia aplicada! Forzando número: " + n);
                         }
                     }
                 }
-
-                // 3. Si no se usó magia (o falló la probabilidad), sorteo normal
                 if (!usedMagic) {
-                    do { 
-                        n = Math.floor(Math.random() * TOTAL_NUMBERS) + 1; 
-                    } while (drawnNumbers.includes(n));
+                    do { n = Math.floor(Math.random() * TOTAL_NUMBERS) + 1; } while (drawnNumbers.includes(n));
                 }
-
-                setDrawnNumbers(p => [...p, n]); 
-                setCurrentNumber(n); 
-                speak(n);
+                setDrawnNumbers(p => [...p, n]); setCurrentNumber(n); speak(n);
             };
 
             const resetGame = () => { setIsAutoPlaying(false); setDrawnNumbers([]); setCurrentNumber(null); setGameOver(false); setCheckResult(null); speak("Reinicio"); };
+            
+            // Función auxiliar para encontrar la mejor voz
+            const getBestVoice = (langCode) => {
+                if (voices.length === 0) return null;
+                
+                if (langCode === 'es') {
+                    // Prioridad 1: Argentina
+                    const arVoice = voices.find(v => v.lang === 'es-AR');
+                    if (arVoice) return arVoice;
+                    
+                    // Prioridad 2: México / Latinoamérica (suena más cercano a AR que a ES)
+                    const latVoice = voices.find(v => ['es-MX', 'es-US', 'es-419'].includes(v.lang));
+                    if (latVoice) return latVoice;
+                    
+                    // Prioridad 3: Cualquier español
+                    return voices.find(v => v.lang.startsWith('es'));
+                }
+                return voices.find(v => v.lang.startsWith('en'));
+            };
+
             const speak = (txt) => {
                 if (!soundEnabled || !window.speechSynthesis) return;
                 window.speechSynthesis.cancel();
-                const u1 = new SpeechSynthesisUtterance(txt.toString()); u1.lang='es-ES'; window.speechSynthesis.speak(u1);
-                if (typeof txt === 'number') { const u2 = new SpeechSynthesisUtterance(txt.toString()); u2.lang='en-US'; window.speechSynthesis.speak(u2); }
+                
+                const u1 = new SpeechSynthesisUtterance(txt.toString());
+                const esVoice = getBestVoice('es');
+                if (esVoice) u1.voice = esVoice;
+                u1.lang = esVoice ? esVoice.lang : 'es-AR'; // Fallback forzoso
+                window.speechSynthesis.speak(u1);
+                
+                if (typeof txt === 'number') { 
+                    const u2 = new SpeechSynthesisUtterance(txt.toString());
+                    const enVoice = getBestVoice('en');
+                    if (enVoice) u2.voice = enVoice;
+                    u2.lang = 'en-US'; 
+                    window.speechSynthesis.speak(u2); 
+                }
             };
 
             const handleCheckCard = () => {
@@ -213,20 +284,19 @@
             };
 
             const getBallColor = (n) => {
-                if(!n) return "bg-gray-100 border-gray-200 text-gray-300";
-                if(n<=10) return "bg-red-500 border-red-600 text-white";
-                if(n<=20) return "bg-orange-500 border-orange-600 text-white";
-                if(n<=30) return "bg-amber-400 border-amber-500 text-black";
-                if(n<=40) return "bg-lime-500 border-lime-600 text-white";
-                if(n<=50) return "bg-green-500 border-green-600 text-white";
-                if(n<=60) return "bg-teal-500 border-teal-600 text-white";
-                if(n<=70) return "bg-blue-500 border-blue-600 text-white";
-                if(n<=80) return "bg-indigo-500 border-indigo-600 text-white";
-                return "bg-pink-500 border-pink-600 text-white";
+                if(n<=10) return "#ef4444"; // Red
+                if(n<=20) return "#f97316"; // Orange
+                if(n<=30) return "#f59e0b"; // Amber
+                if(n<=40) return "#84cc16"; // Lime
+                if(n<=50) return "#10b981"; // Green
+                if(n<=60) return "#14b8a6"; // Teal
+                if(n<=70) return "#3b82f6"; // Blue
+                if(n<=80) return "#6366f1"; // Indigo
+                return "#ec4899"; // Pink
             };
 
             const handleMagicLogin = () => {
-                if (magicCode === "ADRIAN") {
+                if (magicCode === "0313") {
                     setIsMagicAuthenticated(true);
                 } else {
                     alert("Código incorrecto");
@@ -238,157 +308,258 @@
                     <audio ref={audioRef} src={MUSIC_URL} loop />
 
                     <div className="max-w-7xl mx-auto">
-                        <div className="flex justify-between items-center mb-6">
-                            <h1 className="text-3xl font-extrabold text-slate-800">BINGO <span className="text-red-600">ADRIÁN</span></h1>
-                            <a href="mobile.html" className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg hover:bg-slate-700 transition shadow-lg hover:scale-105">
-                                <Smartphone size={20} /> <span className="hidden sm:inline">Versión Móvil</span>
+                        <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+                            <h1 className="text-4xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 drop-shadow-lg">
+                                BINGO <span className={`bg-clip-text text-transparent bg-gradient-to-r ${T.grad}`}>ADRIÁN</span>
+                            </h1>
+                            <a href="mobile.html" className="flex items-center gap-2 bg-slate-800/50 backdrop-blur-md text-white px-5 py-2.5 rounded-2xl hover:bg-slate-700/50 transition border border-white/10 shadow-lg group">
+                                <Smartphone size={20} className="text-slate-400 group-hover:text-white transition"/> <span className="text-sm font-bold tracking-wide">MÓVIL</span>
                             </a>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                            <div className="lg:col-span-4 flex flex-col items-center bg-white p-6 rounded-2xl shadow-lg border border-slate-200 sticky top-4 h-fit z-10">
-                                <div className="text-slate-500 font-medium mb-4">Bolas: <span className="text-slate-900 font-bold">{drawnNumbers.length}</span> / 90</div>
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                            
+                            {/* PANEL IZQUIERDO: CONTROLES */}
+                            <div className="lg:col-span-4 flex flex-col items-center bg-slate-800/40 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl border border-white/5 sticky top-4 h-fit z-10">
+                                <div className="w-full flex justify-between text-xs font-bold tracking-wider text-slate-400 mb-6 uppercase">
+                                    <span>Bolas: <span className="text-white text-base">{drawnNumbers.length}</span> / 90</span>
+                                    <span>{currentNumber ? 'ÚLTIMA' : 'ESPERANDO'}</span>
+                                </div>
                                 
-                                <div className="my-4 flex flex-col items-center min-h-[160px]">
-                                    <div className={`w-40 h-40 rounded-full border-8 flex items-center justify-center shadow-xl transition-all ${getBallColor(currentNumber)} ${currentNumber?'animate-bounce-short':''}`}>
-                                        <span className="text-6xl font-black">{currentNumber||"Bingo"}</span>
+                                <div className="my-2 flex flex-col items-center justify-center min-h-[200px] w-full relative">
+                                    <div 
+                                        className={`w-48 h-48 rounded-full flex items-center justify-center transition-all duration-500 relative z-10 ${currentNumber ? 'ball-3d animate-bounce-short' : 'bg-slate-700/50 border-4 border-slate-600/30'}`}
+                                        style={currentNumber ? {'--ball-color': getBallColor(currentNumber)} : {}}
+                                    >
+                                        <span className="text-8xl font-black text-white drop-shadow-md tracking-tighter">
+                                            {currentNumber||"--"}
+                                        </span>
                                     </div>
-                                    <div className="flex gap-2 mt-4 overflow-x-auto p-2 justify-center w-full">
-                                        {drawnNumbers.slice(0,-1).slice(-5).reverse().map((n,i)=><div key={i} className={`w-10 h-10 shrink-0 rounded-full border-2 flex items-center justify-center font-bold text-sm ${getBallColor(n)}`}>{n}</div>)}
+                                    
+                                    {/* Sombra de la bola */}
+                                    <div className="w-32 h-4 bg-black/40 blur-xl rounded-[100%] absolute bottom-2 transition-all duration-500" style={{transform: currentNumber ? 'scale(1)' : 'scale(0.8)', opacity: currentNumber ? 0.6 : 0.2 }}></div>
+
+                                    {/* Últimas bolas */}
+                                    <div className="flex gap-3 mt-8 overflow-hidden p-2 justify-center w-full mask-linear">
+                                        {drawnNumbers.slice(0,-1).slice(-5).reverse().map((n,i)=> (
+                                            <div key={i} 
+                                                className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg text-white shadow-lg border border-white/10"
+                                                style={{background: getBallColor(n)}}
+                                            >
+                                                {n}
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
 
-                                <div className="w-full space-y-3">
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <button onClick={()=>setIsAutoPlaying(!isAutoPlaying)} className={`flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white shadow transition active:scale-95 ${isAutoPlaying?'bg-orange-500':'bg-blue-600'}`}>{isAutoPlaying?<><Pause/> Pausar</>:<><Play/> Auto</>}</button>
-                                        <button onClick={drawBall} disabled={isAutoPlaying} className="flex items-center justify-center gap-2 py-3 rounded-xl font-bold bg-green-500 text-white shadow transition active:scale-95 disabled:opacity-50"><ChevronRight/> Sacar</button>
-                                    </div>
-                                    <button onClick={resetGame} className="w-full flex items-center justify-center gap-2 py-2 rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200"><RotateCcw size={18}/> Reiniciar</button>
-                                    
-                                    {/* BOTONERA INFERIOR CON MAGIC SETTINGS */}
-                                    <div className="flex gap-2">
-                                        <button onClick={()=>setShowTools(true)} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold bg-indigo-600 text-white shadow hover:bg-indigo-700">
-                                            <FileText size={18}/> Cartones
+                                <div className="w-full space-y-4 mt-6">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <button onClick={()=>setIsAutoPlaying(!isAutoPlaying)} className={`flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-white shadow-lg transition-all active:scale-95 bg-gradient-to-br ${isAutoPlaying ? 'from-orange-500 to-red-500 shadow-orange-900/20' : `${T.grad} shadow-lg`} hover:brightness-110`}>
+                                            {isAutoPlaying?<><Pause/> PAUSAR</>:<><Play/> AUTO</>}
                                         </button>
-                                        <button onClick={()=>setShowMagic(true)} className="w-14 flex items-center justify-center rounded-xl font-bold bg-slate-200 text-slate-600 shadow hover:bg-slate-300">
+                                        <button onClick={drawBall} disabled={isAutoPlaying} className="flex items-center justify-center gap-2 py-4 rounded-2xl font-bold bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-900/20 transition-all active:scale-95 disabled:opacity-50 hover:brightness-110">
+                                            SACAR <ChevronRight/>
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-4 gap-2">
+                                        <button onClick={resetGame} className="col-span-2 flex items-center justify-center gap-2 py-3 rounded-xl font-bold bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 transition backdrop-blur-sm border border-white/5">
+                                            <RotateCcw size={18}/> Reiniciar
+                                        </button>
+                                        <button onClick={()=>setShowTools(true)} className={`col-span-1 flex items-center justify-center rounded-xl font-bold bg-gradient-to-br ${T.grad} text-white shadow-lg hover:scale-105 transition`} title="Cartones">
+                                            <FileText size={20}/>
+                                        </button>
+                                        <button onClick={()=>setShowMagic(true)} className="col-span-1 flex items-center justify-center rounded-xl font-bold bg-slate-700/50 text-slate-400 hover:text-white hover:bg-slate-600/50 transition border border-white/5" title="Ajustes">
                                             <Settings size={20}/>
                                         </button>
                                     </div>
                                 </div>
 
-                                <div className="mt-6 w-full pt-4 border-t border-slate-100">
-                                    <div className="flex justify-between mb-4 gap-4">
-                                        <button onClick={()=>setSoundEnabled(!soundEnabled)} className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-bold transition ${soundEnabled ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
-                                            {soundEnabled ? <><Volume2 size={16}/> Voz ON</> : <><VolumeX size={16}/> Voz OFF</>}
+                                {/* Controles de Audio y Velocidad */}
+                                <div className="mt-8 w-full pt-6 border-t border-white/10">
+                                    <div className="flex gap-3 mb-6">
+                                        <button onClick={()=>setSoundEnabled(!soundEnabled)} className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-2xl text-xs font-bold transition border ${soundEnabled ? `bg-gradient-to-br ${T.grad} border-transparent text-white` : 'bg-slate-800/50 border-white/10 text-slate-500'}`}>
+                                            {soundEnabled ? <Volume2 size={20}/> : <VolumeX size={20}/>}
+                                            <span>VOZ</span>
                                         </button>
-                                        <button onClick={toggleMusic} className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-bold transition ${musicEnabled ? 'bg-pink-100 text-pink-700' : 'bg-slate-100 text-slate-500'}`}>
-                                            {musicEnabled ? <><MusicNote size={16}/> Música ON</> : <><MusicOff size={16}/> Música OFF</>}
+                                        <button onClick={toggleMusic} className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-2xl text-xs font-bold transition border ${musicEnabled ? 'bg-gradient-to-br from-pink-500 to-rose-500 border-transparent text-white' : 'bg-slate-800/50 border-white/10 text-slate-500'}`}>
+                                            {musicEnabled ? <MusicNote size={20}/> : <MusicOff size={20}/>}
+                                            <span>MÚSICA</span>
                                         </button>
                                     </div>
                                     
-                                    <div className="mt-4">
-                                        <input type="range" min="1000" max="15000" step="1000" value={16000 - gameSpeed} onChange={e=>setGameSpeed(16000 - Number(e.target.value))} className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-blue-600" />
-                                        <div className="flex justify-between text-xs text-slate-400 mt-1 font-medium">
-                                            <span>Lento (15s)</span>
-                                            <span>Velocidad Auto</span>
-                                            <span>Rápido (1s)</span>
+                                    <div className="relative pt-1">
+                                        <input type="range" min="1000" max="15000" step="1000" value={16000 - gameSpeed} onChange={e=>setGameSpeed(16000 - Number(e.target.value))} 
+                                            className={`w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-${theme === 'black' ? 'white' : 'blue-500'}`} 
+                                        />
+                                        <div className="flex justify-between text-[10px] font-bold text-slate-500 mt-2 uppercase tracking-wide">
+                                            <span>Lento</span>
+                                            <span>Velocidad</span>
+                                            <span>Rápido</span>
                                         </div>
                                     </div>
 
-                                    <div className="flex justify-end mt-2">
-                                        <span className="text-[10px] font-mono text-slate-300 select-none cursor-default" title="Versión de la App">{APP_VERSION}</span>
+                                    <div className="flex justify-center mt-6 opacity-30 hover:opacity-100 transition">
+                                        <span className="text-[10px] font-mono text-white bg-white/10 px-2 py-1 rounded-full">{APP_VERSION}</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="lg:col-span-8 bg-white p-4 rounded-2xl shadow-lg border border-slate-200">
-                                <div className="grid grid-cols-5 sm:grid-cols-10 gap-1 sm:gap-2">
+                            {/* PANEL DERECHO: TABLERO */}
+                            <div className="lg:col-span-8 bg-slate-800/40 backdrop-blur-xl p-6 sm:p-8 rounded-[2rem] shadow-2xl border border-white/5">
+                                <div className="grid grid-cols-10 gap-2 sm:gap-3">
                                     {Array.from({length:90},(_,i)=>i+1).map(n => {
                                         const active = drawnNumbers.includes(n);
                                         const curr = currentNumber===n;
-                                        return <div key={n} className={`aspect-square flex items-center justify-center rounded-lg font-bold transition-all duration-300 ${curr ? getBallColor(n)+' scale-110 shadow-xl ring-4 ring-yellow-400 z-10' : active ? getBallColor(n)+' opacity-90' : 'bg-slate-100 text-slate-300'}`}>{n}</div>
+                                        const color = getBallColor(n);
+                                        
+                                        return (
+                                            <div key={n} 
+                                                className={`aspect-square flex items-center justify-center rounded-xl font-bold text-sm sm:text-lg transition-all duration-500 relative
+                                                ${curr 
+                                                    ? 'z-20 scale-125 text-white neon-box bg-slate-900 border-2' 
+                                                    : active 
+                                                        ? 'bg-slate-700/80 text-white shadow-inner border border-white/10' 
+                                                        : 'bg-slate-800/30 text-slate-600 border border-transparent'
+                                                }`}
+                                                style={curr ? {'--glow-color': color} : {}}
+                                            >
+                                                {/* Punto de luz si está activo */}
+                                                {active && !curr && (
+                                                    <div className="absolute w-1.5 h-1.5 rounded-full top-1.5 right-1.5 opacity-80" style={{background: color}}></div>
+                                                )}
+                                                <span className={curr ? 'neon-text' : ''} style={active ? {color: curr ? 'white' : color} : {}}>{n}</span>
+                                            </div>
+                                        );
                                     })}
                                 </div>
                             </div>
                         </div>
 
+                        {/* MODALES CON DISEÑO FASHION */}
                         {/* Modal Cartones */}
-                        {showTools && <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                            <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-                                <div className="p-4 border-b flex justify-between items-center"><h2 className="font-bold text-lg flex gap-2"><FileText className="text-indigo-600"/> Gestión de Cartones</h2><button onClick={()=>setShowTools(false)}><X/></button></div>
-                                <div className="flex border-b"><button onClick={()=>setToolTab('check')} className={`flex-1 py-3 font-bold ${toolTab==='check'?'text-indigo-600 bg-indigo-50 border-b-2 border-indigo-600':''}`}>Verificar</button><button onClick={()=>setToolTab('print')} className={`flex-1 py-3 font-bold ${toolTab==='print'?'text-indigo-600 bg-indigo-50 border-b-2 border-indigo-600':''}`}>Imprimir</button></div>
-                                <div className="p-6 overflow-y-auto">
-                                    {toolTab==='check' && <div className="space-y-4">
-                                        <div className="flex gap-2"><input type="number" placeholder="Nº Serie" className="flex-1 border p-2 rounded-lg" value={checkSerial} onChange={e=>setCheckSerial(e.target.value)}/><button onClick={handleCheckCard} className="bg-indigo-600 text-white px-4 rounded-lg font-bold">Verificar</button></div>
-                                        {checkResult && <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                                            <div className="flex justify-between mb-2"><span className="font-bold">Cartón #{checkResult.s}</span><span className="bg-slate-800 text-white text-xs px-2 py-1 rounded">{checkResult.analysis.mainPrize}</span></div>
-                                            <div className="space-y-1">{checkResult.grid.map((r,i)=><div key={i} className="grid grid-cols-9 gap-1">{r.map((n,j)=><div key={j} className={`h-8 flex items-center justify-center text-xs font-bold rounded ${n===0?'':drawnNumbers.includes(n)?'bg-yellow-400 text-black':'bg-white border'}`}>{n||''}</div>)}</div>)}</div>
+                        {showTools && <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity">
+                            <div className="bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col border border-white/10">
+                                <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
+                                    <h2 className={`font-black text-xl flex gap-3 items-center ${T.accent}`}><FileText/> GESTIÓN DE CARTONES</h2>
+                                    <button onClick={()=>setShowTools(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/20 transition"><X size={18}/></button>
+                                </div>
+                                <div className="flex border-b border-white/5 p-1 bg-black/20">
+                                    <button onClick={()=>setToolTab('check')} className={`flex-1 py-3 rounded-xl text-sm font-bold transition ${toolTab==='check'? `bg-white/10 text-white shadow` : 'text-slate-500 hover:text-slate-300'}`}>Verificar</button>
+                                    <button onClick={()=>setToolTab('print')} className={`flex-1 py-3 rounded-xl text-sm font-bold transition ${toolTab==='print'? `bg-white/10 text-white shadow` : 'text-slate-500 hover:text-slate-300'}`}>Imprimir</button>
+                                </div>
+                                <div className="p-8 overflow-y-auto">
+                                    {toolTab==='check' && <div className="space-y-6">
+                                        <div className="flex gap-3">
+                                            <input type="number" placeholder="Nº Serie" className="flex-1 bg-black/30 border border-white/10 text-white p-4 rounded-xl focus:border-blue-500 focus:outline-none text-lg font-mono tracking-widest" value={checkSerial} onChange={e=>setCheckSerial(e.target.value)}/>
+                                            <button onClick={handleCheckCard} className={`bg-gradient-to-r ${T.grad} text-white px-8 rounded-xl font-bold shadow-lg hover:brightness-110 active:scale-95 transition`}>Verificar</button>
+                                        </div>
+                                        {checkResult && <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
+                                            <div className="flex justify-between mb-4 items-center">
+                                                <span className="font-bold text-white text-lg">Cartón <span className="text-blue-400 font-mono">#{checkResult.s}</span></span>
+                                                <span className={`px-4 py-1 rounded-full text-xs font-black uppercase tracking-wider ${checkResult.analysis.mainPrize.includes('!') ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-black shadow-lg shadow-orange-500/20' : 'bg-slate-700 text-slate-400'}`}>{checkResult.analysis.mainPrize}</span>
+                                            </div>
+                                            <div className="space-y-2">
+                                                {checkResult.grid.map((r,i)=>
+                                                    <div key={i} className="grid grid-cols-9 gap-1">
+                                                        {r.map((n,j)=><div key={j} className={`h-10 flex items-center justify-center text-sm font-bold rounded-lg transition ${n===0?'bg-transparent':drawnNumbers.includes(n)?'bg-green-500 text-white shadow-lg shadow-green-500/30 scale-105':'bg-white/10 text-white/50 border border-white/5'}`}>{n||''}</div>)}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>}
                                     </div>}
-                                    {toolTab==='print' && <div className="space-y-4">
-                                        <div className="grid grid-cols-2 gap-4"><div><label className="text-xs font-bold text-slate-500">Inicio</label><input type="number" className="w-full border p-2 rounded" value={printSerialStart} onChange={e=>setPrintSerialStart(e.target.value)}/></div><div><label className="text-xs font-bold text-slate-500">Cantidad</label><input type="number" className="w-full border p-2 rounded" value={printCount} onChange={e=>setPrintCount(e.target.value)}/></div></div>
-                                        <button onClick={handlePrint} className="w-full bg-slate-800 text-white py-3 rounded-xl font-bold">Generar Previa</button>
-                                        {generatedCards.length>0 && <button onClick={openPrintWindow} className="w-full bg-green-600 text-white py-3 rounded-xl font-bold shadow-lg">🖨️ Abrir PDF</button>}
+                                    {toolTab==='print' && <div className="space-y-6">
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <div>
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Serie Inicial</label>
+                                                <input type="number" className="w-full bg-black/30 border border-white/10 text-white p-4 rounded-xl focus:border-blue-500 focus:outline-none" value={printSerialStart} onChange={e=>setPrintSerialStart(e.target.value)}/>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Cantidad</label>
+                                                <input type="number" className="w-full bg-black/30 border border-white/10 text-white p-4 rounded-xl focus:border-blue-500 focus:outline-none" value={printCount} onChange={e=>setPrintCount(e.target.value)}/>
+                                            </div>
+                                        </div>
+                                        <div className="pt-4 flex flex-col gap-3">
+                                            <button onClick={handlePrint} className="w-full bg-slate-700 hover:bg-slate-600 text-white py-4 rounded-xl font-bold border border-white/5 transition">1. Generar Vista Previa</button>
+                                            {generatedCards.length>0 && <button onClick={openPrintWindow} className="w-full bg-gradient-to-r from-emerald-500 to-green-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-emerald-900/20 hover:brightness-110 active:scale-95 transition animate-bounce-short">2. Descargar PDF</button>}
+                                        </div>
                                     </div>}
                                 </div>
                             </div>
                         </div>}
 
-                        {/* Modal Magic Settings */}
-                        {showMagic && <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-                            <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h2 className="font-bold text-lg flex items-center gap-2 text-slate-800"><Settings className="text-slate-500"/> Configuración</h2>
-                                    <button onClick={()=>setShowMagic(false)}><X/></button>
+                        {/* Modal Configuración & Magic (STEALTH) */}
+                        {showMagic && <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+                            <div className="bg-slate-900 w-full max-w-sm rounded-3xl shadow-2xl p-8 border border-white/10">
+                                <div className="flex justify-between items-center mb-8">
+                                    <h2 onClick={() => setMagicClicks(c => c + 1)} className="font-black text-xl flex items-center gap-3 text-white cursor-pointer select-none tracking-wide">
+                                        <Settings className="text-slate-500"/> AJUSTES
+                                    </h2>
+                                    <button onClick={() => { setShowMagic(false); setMagicClicks(0); setIsMagicAuthenticated(false); setMagicCode(""); }} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 text-slate-400 hover:bg-white/20 hover:text-white transition"><X size={18}/></button>
                                 </div>
 
-                                {!isMagicAuthenticated ? (
-                                    <div className="space-y-4">
-                                        <p className="text-sm text-slate-500">Introduce el código de administrador:</p>
-                                        <input 
-                                            type="password" 
-                                            className="w-full border p-3 rounded-lg text-center tracking-widest text-lg" 
-                                            placeholder="••••••"
-                                            value={magicCode}
-                                            onChange={(e) => setMagicCode(e.target.value)}
-                                        />
-                                        <button onClick={handleMagicLogin} className="w-full bg-slate-800 text-white py-3 rounded-lg font-bold">Acceder</button>
+                                <div className="mb-8">
+                                    <h3 className="text-[10px] font-bold text-slate-500 uppercase mb-4 flex items-center gap-2 tracking-widest"><Palette size={12}/> Estilo Visual</h3>
+                                    <div className="flex justify-between gap-2 p-2 bg-black/20 rounded-2xl border border-white/5">
+                                        {Object.entries(THEMES).map(([key, t]) => (
+                                            <button 
+                                                key={key}
+                                                onClick={() => setTheme(key)}
+                                                className={`w-8 h-8 rounded-full bg-gradient-to-br ${t.grad} transition-all duration-300 ${theme === key ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-slate-900' : 'opacity-50 hover:opacity-100 hover:scale-105'}`}
+                                                title={t.name}
+                                            />
+                                        ))}
                                     </div>
-                                ) : (
-                                    <div className="space-y-6">
-                                        <div className="bg-purple-50 border border-purple-100 p-4 rounded-xl">
-                                            <div className="flex items-center gap-2 text-purple-700 font-bold mb-2">
-                                                <Wand2 size={20}/> MAGIC MODE
-                                            </div>
-                                            <p className="text-xs text-purple-600 mb-4">
-                                                Introduce el N.º de Serie del cartón que deseas favorecer. El sistema aumentará la probabilidad de que salgan sus números.
-                                            </p>
-                                            
-                                            <div className="mb-2">
-                                                <label className="text-xs font-bold text-slate-500 uppercase">Cartón Objetivo</label>
-                                                <input 
-                                                    type="number" 
-                                                    className="w-full border border-slate-300 p-2 rounded-lg mt-1" 
-                                                    placeholder="Ej: 1005"
-                                                    value={magicSerial}
-                                                    onChange={(e) => setMagicSerial(e.target.value)}
-                                                />
-                                            </div>
+                                </div>
 
-                                            <div className="flex items-center gap-3 mt-4">
-                                                <span className="text-sm font-bold text-slate-700 flex-1">Activar Probabilidad</span>
-                                                <button 
-                                                    onClick={() => setMagicEnabled(!magicEnabled)}
-                                                    className={`w-12 h-6 rounded-full p-1 transition-colors ${magicEnabled ? 'bg-purple-600' : 'bg-slate-300'}`}
-                                                >
-                                                    <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${magicEnabled ? 'translate-x-6' : ''}`}></div>
-                                                </button>
-                                            </div>
-                                        </div>
+                                {(magicClicks >= 5 || isMagicAuthenticated) && (
+                                    <div className="animate-bounce-short">
+                                        <div className="w-full h-px bg-white/10 my-6"></div>
                                         
-                                        <div className="text-center text-xs text-slate-400">
-                                            {magicEnabled && magicSerial ? "🟢 Sistema Activo" : "⚪ Sistema Inactivo"}
-                                        </div>
+                                        {!isMagicAuthenticated ? (
+                                            <div className="space-y-4">
+                                                <input 
+                                                    type="password" 
+                                                    className="w-full bg-black/40 border border-white/10 text-white p-4 rounded-xl text-center tracking-[0.5em] text-lg focus:border-purple-500 focus:outline-none transition" 
+                                                    placeholder="····"
+                                                    value={magicCode}
+                                                    onChange={(e) => setMagicCode(e.target.value)}
+                                                />
+                                                <button onClick={handleMagicLogin} className="w-full bg-white text-black py-3 rounded-xl font-black hover:bg-slate-200 transition">DESBLOQUEAR</button>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-6">
+                                                <div className="bg-purple-900/20 border border-purple-500/30 p-5 rounded-2xl relative overflow-hidden">
+                                                    <div className="absolute top-0 right-0 w-20 h-20 bg-purple-500/20 blur-2xl rounded-full"></div>
+                                                    
+                                                    <div className="flex items-center gap-2 text-purple-400 font-black mb-1 relative z-10">
+                                                        <Wand2 size={18}/> MAGIC MODE
+                                                    </div>
+                                                    <p className="text-xs text-purple-300/60 mb-4 relative z-10">Algoritmo de probabilidad aumentada.</p>
+                                                    
+                                                    <div className="mb-4 relative z-10">
+                                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Serial Objetivo</label>
+                                                        <input 
+                                                            type="number" 
+                                                            className="w-full bg-black/40 border border-white/10 text-white p-3 rounded-xl focus:border-purple-500 focus:outline-none font-mono" 
+                                                            placeholder="0000"
+                                                            value={magicSerial}
+                                                            onChange={(e) => setMagicSerial(e.target.value)}
+                                                        />
+                                                    </div>
+
+                                                    <div className="flex items-center gap-3 relative z-10">
+                                                        <span className="text-xs font-bold text-slate-300 flex-1">Estado del Sistema</span>
+                                                        <button 
+                                                            onClick={() => setMagicEnabled(!magicEnabled)}
+                                                            className={`w-14 h-7 rounded-full p-1 transition-all duration-300 ${magicEnabled ? 'bg-purple-500 shadow-[0_0_10px_#a855f7]' : 'bg-slate-700'}`}
+                                                        >
+                                                            <div className={`bg-white w-5 h-5 rounded-full shadow-sm transform transition-transform duration-300 ${magicEnabled ? 'translate-x-7' : ''}`}></div>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -404,5 +575,3 @@
     </script>
 </body>
 </html>
-
-
